@@ -1,0 +1,684 @@
+# Zeni - Final Technical Development Plan (Version 1.0)
+
+## Vision
+
+**Zeni** is a modern ride-hailing platform connecting passengers with nearby drivers through a fast, reliable, and secure mobile application.
+
+The initial release focuses on delivering a polished Uber/Bolt-style experience. Future versions can expand into deliveries, courier services, and logistics, but those are intentionally excluded from Version 1.
+
+---
+
+# Technology Stack
+
+## Mobile Applications
+
+**Framework**
+
+* Flutter (Latest Stable)
+
+**State Management**
+
+* BLoC
+
+**Routing**
+
+* GoRouter
+
+**Networking**
+
+* Dio
+
+**Local Storage**
+
+* Flutter Secure Storage
+* SharedPreferences
+
+**Maps**
+
+* Google Maps SDK
+
+**Location**
+
+* Geolocator
+* Geocoding
+
+**Push Notifications**
+
+* Firebase Cloud Messaging
+
+**Image Handling**
+
+* Cached Network Image
+* Image Picker
+
+**Permissions**
+
+* Permission Handler
+
+---
+
+# Backend
+
+For Version 1 we will use **Supabase**.
+
+Supabase provides:
+
+* Authentication
+* PostgreSQL Database
+* Realtime
+* Storage
+* Edge Functions
+* Row Level Security (RLS)
+
+No custom backend (NestJS) will be built initially. This keeps development faster and reduces operational complexity.
+
+---
+
+# Database
+
+**Supabase PostgreSQL**
+
+Recommended extensions:
+
+* PostGIS
+* pgcrypto
+* uuid-ossp
+
+---
+
+# Authentication
+
+Users authenticate using:
+
+* Phone Number + OTP
+* Google Login (optional later)
+* Apple Login (iOS later)
+
+Authentication is handled entirely by Supabase Auth.
+
+---
+
+# Storage
+
+Supabase Storage will hold:
+
+* Profile photos
+* Driver licence
+* Vehicle photos
+* Vehicle registration
+* Insurance documents
+
+---
+
+# Real-Time Features
+
+Supabase Realtime powers:
+
+* Driver location updates
+* Ride request notifications
+* Ride status updates
+* Trip progress
+* Driver online/offline status
+
+---
+
+# Maps
+
+Google Maps Platform
+
+Required APIs:
+
+* Maps SDK
+* Directions API
+* Places API
+* Geocoding API
+* Distance Matrix API
+
+---
+
+# Notifications
+
+Firebase Cloud Messaging
+
+Used for:
+
+* Ride accepted
+* Ride cancelled
+* Driver arrived
+* OTP verification
+* Promotions
+
+---
+
+# Payments (Version 1)
+
+Supported:
+
+* Cash
+* Yoco
+* MTN MoMo
+
+Wallet functionality is reserved for a later version.
+
+---
+
+# Rider Application
+
+## Authentication
+
+* Sign Up
+* Login
+* OTP Verification
+
+---
+
+## Home Screen
+
+Features:
+
+* Current location
+* Search destination
+* Saved places
+* Nearby drivers
+* Fare estimate
+
+---
+
+## Ride Booking
+
+Passenger can:
+
+* Select pickup
+* Select destination
+* View estimated fare
+* Select payment method
+* Request ride
+
+---
+
+## Searching for Driver
+
+Passenger sees:
+
+* Searching animation
+* Driver distance
+* Estimated arrival
+
+---
+
+## Driver Accepted
+
+Passenger sees:
+
+* Driver profile
+* Vehicle information
+* Registration number
+* Driver rating
+* Live driver location
+* ETA
+
+Actions:
+
+* Call driver
+* Chat
+* Cancel ride
+* Share trip
+
+---
+
+## During Trip
+
+Features:
+
+* Live route
+* ETA
+* Emergency button
+* Trip progress
+
+---
+
+## Trip Complete
+
+Passenger can:
+
+* Rate driver
+* Leave review
+* View receipt
+* Report issue
+
+---
+
+## Trip History
+
+Displays:
+
+* Previous trips
+* Receipts
+* Payments
+* Ratings
+
+---
+
+## Profile
+
+Passenger can manage:
+
+* Profile picture
+* Name
+* Phone number
+* Emergency contact
+* Saved addresses
+
+---
+
+# Driver Application
+
+## Registration
+
+Driver uploads:
+
+* Profile picture
+* Driver licence
+* Vehicle registration
+* Vehicle photos
+* Insurance
+
+Status:
+
+Pending Approval
+
+---
+
+## Driver Dashboard
+
+Driver can:
+
+* Go Online
+* Go Offline
+* View today's trips
+* View earnings
+
+---
+
+## Incoming Ride
+
+Driver receives:
+
+* Pickup
+* Destination
+* Estimated fare
+* Distance to passenger
+
+Driver may:
+
+* Accept
+* Decline
+
+---
+
+## Navigation
+
+Driver sees:
+
+* Passenger location
+* Route
+* Estimated arrival
+
+---
+
+## Trip
+
+Driver actions:
+
+* Arrived
+* Start Trip
+* End Trip
+
+---
+
+## Earnings
+
+Driver views:
+
+* Daily earnings
+* Weekly earnings
+* Monthly earnings
+
+---
+
+## Trip History
+
+Driver sees:
+
+* Completed trips
+* Cancelled trips
+* Ratings
+
+---
+
+## Driver Profile
+
+Manage:
+
+* Personal details
+* Vehicle
+* Documents
+
+---
+
+# Database Tables
+
+Authentication
+
+```
+profiles
+```
+
+Users
+
+```
+drivers
+passengers
+```
+
+Vehicles
+
+```
+vehicles
+vehicle_documents
+```
+
+Trips
+
+```
+rides
+ride_requests
+ride_locations
+ride_status_history
+```
+
+Payments
+
+```
+payments
+payment_methods
+```
+
+Reviews
+
+```
+ratings
+reviews
+```
+
+Notifications
+
+```
+notifications
+device_tokens
+```
+
+Support
+
+```
+support_tickets
+```
+
+Saved Data
+
+```
+saved_places
+```
+
+---
+
+# Storage Buckets
+
+```
+avatars/
+
+driver_documents/
+
+vehicle_photos/
+
+ride_receipts/
+```
+
+---
+
+# Ride Workflow
+
+```
+Passenger opens app
+
+↓
+
+Current location detected
+
+↓
+
+Destination selected
+
+↓
+
+Fare estimated
+
+↓
+
+Ride requested
+
+↓
+
+Nearby drivers notified
+
+↓
+
+Driver accepts
+
+↓
+
+Passenger notified
+
+↓
+
+Driver navigates
+
+↓
+
+Driver arrives
+
+↓
+
+Passenger boards
+
+↓
+
+Trip starts
+
+↓
+
+Destination reached
+
+↓
+
+Trip completed
+
+↓
+
+Payment completed
+
+↓
+
+Rating submitted
+```
+
+---
+
+# Flutter Architecture
+
+```
+lib/
+
+core/
+config/
+constants/
+services/
+models/
+repositories/
+
+features/
+
+authentication/
+
+home/
+
+booking/
+
+maps/
+
+rides/
+
+driver/
+
+payments/
+
+history/
+
+profile/
+
+notifications/
+
+shared/
+
+widgets/
+
+theme/
+
+routes/
+```
+
+---
+
+# Project Structure
+
+```
+zeni/
+
+├── rider_app/
+│   └── Flutter
+
+├── driver_app/
+│   └── Flutter
+
+└── shared_packages/
+    ├── models
+    ├── services
+    ├── widgets
+    └── utilities
+```
+
+---
+
+# Security
+
+* Supabase Authentication
+* Row Level Security (RLS) on all tables
+* Secure Storage for session tokens
+* HTTPS only
+* Phone verification before ride requests
+* Driver document verification before activation
+
+---
+
+# Development Phases
+
+### Phase 1: Project Foundation
+
+* Create Supabase project
+* Configure authentication
+* Set up PostgreSQL with PostGIS
+* Create database schema
+* Configure Flutter architecture
+
+### Phase 2: Authentication
+
+* OTP login
+* User profiles
+* Driver registration
+* Passenger registration
+
+### Phase 3: Maps & Location
+
+* Google Maps integration
+* Live GPS updates
+* Address search
+* Route display
+
+### Phase 4: Ride Booking
+
+* Ride requests
+* Driver discovery
+* Fare estimation
+* Ride acceptance
+
+### Phase 5: Trip Management
+
+* Live trip tracking
+* Trip status updates
+* Trip completion
+* History
+
+### Phase 6: Payments
+
+* Cash
+* Yoco integration
+* MTN MoMo integration
+* Receipts
+
+### Phase 7: Ratings & Notifications
+
+* Reviews
+* Push notifications
+* Support tickets
+
+### Phase 8: Testing & Deployment
+
+* End-to-end testing
+* Security review
+* Play Store preparation
+* App Store preparation
+
+---
+
+# Version 1 Scope
+
+**Included**
+
+* Rider app
+* Driver app
+* Phone authentication
+* Google Maps
+* Live driver tracking
+* Ride requests and matching
+* Trip management
+* Cash, Yoco, and MTN MoMo payments
+* Ratings and reviews
+* Push notifications
+* Trip history
+* Profile management
+
+**Excluded**
+
+* Admin dashboard
+* Fleet management
+* Driver referral system
+* Passenger wallet
+* Promo codes
+* Ride scheduling
+* Multi-stop trips
+* Carpooling
+* Food delivery
+* Parcel delivery
+* Corporate accounts
+
+This scope keeps Version 1 focused on launching a dependable ride-hailing service. The architecture remains flexible enough to introduce a dedicated backend (such as NestJS) and an admin portal later without requiring a major redesign of the Flutter apps or the Supabase database.
