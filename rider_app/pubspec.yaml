@@ -1,0 +1,65 @@
+name: zeni_rider
+description: "Zeni Rider - Ride-hailing passenger application"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_bloc: ^8.1.6
+
+  # Navigation
+  go_router: ^14.6.2
+
+  # Network
+  dio: ^5.7.0
+  supabase_flutter: ^2.8.1
+
+  # Storage
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.4
+
+  # Maps & Location
+  google_maps_flutter: ^2.10.0
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+
+  # UI
+  google_places_flutter: ^2.1.0
+  flutter_polyline_points: ^2.1.0
+
+  # Image picking
+  image_picker: ^1.1.2
+
+  # Notifications
+  firebase_core: ^3.10.1
+  firebase_messaging: ^15.2.1
+
+  # Shared packages
+  zeni_models:
+    path: ../shared_packages/models
+  zeni_services:
+    path: ../shared_packages/services
+  zeni_widgets:
+    path: ../shared_packages/widgets
+  zeni_utilities:
+    path: ../shared_packages/utilities
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

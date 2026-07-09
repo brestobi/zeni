@@ -1,0 +1,13 @@
+name: zeni_services
+description: Shared services and API clients for the Zeni ride-hailing platform
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  dio: ^5.7.0
+  supabase_flutter: ^2.8.1
+  zeni_models:
+    path: ../models

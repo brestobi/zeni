@@ -1,0 +1,13 @@
+name: zeni_widgets
+description: Shared UI widgets for the Zeni ride-hailing platform
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  zeni_models:
+    path: ../models
