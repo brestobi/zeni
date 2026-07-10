@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zeni_models/zeni_models.dart';
+import '../repository/auth_repository.dart';
 
 // --- Events ---
 sealed class AuthEvent {}
@@ -18,41 +19,43 @@ final class OtpCodeSubmitted extends AuthEvent {
 final class AuthSignOutRequested extends AuthEvent {}
 
 // --- States ---
-sealed class AuthState {}
+sealed class AuthBlocState {}
 
-final class AuthInitial extends AuthState {}
+final class AuthInitial extends AuthBlocState {}
 
-final class AuthLoading extends AuthState {}
+final class AuthLoading extends AuthBlocState {}
 
-final class AuthOtpSent extends AuthState {
+final class AuthOtpSent extends AuthBlocState {
   final String phoneNumber;
   AuthOtpSent(this.phoneNumber);
 }
 
-final class AuthAuthenticated extends AuthState {
+final class AuthAuthenticated extends AuthBlocState {
   final Profile profile;
   final Driver? driver;
   AuthAuthenticated(this.profile, {this.driver});
 }
 
-final class AuthNewUser extends AuthState {
+final class AuthNewUser extends AuthBlocState {
   final String phoneNumber;
-  const AuthNewUser(this.phoneNumber);
+  AuthNewUser(this.phoneNumber);
 }
 
-final class AuthRegistrationPending extends AuthState {
+final class AuthRegistrationPending extends AuthBlocState {
   final Profile profile;
   AuthRegistrationPending(this.profile);
 }
 
-final class AuthError extends AuthState {
+final class AuthError extends AuthBlocState {
   final String message;
   AuthError(this.message);
 }
 
 // --- BLoC ---
-class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  AuthBloc() : super(AuthInitial()) {
+class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
+  final AuthRepository authRepository;
+
+  AuthBloc({required this.authRepository}) : super(AuthInitial()) {
     on<PhoneNumberSubmitted>(_onPhoneNumberSubmitted);
     on<OtpCodeSubmitted>(_onOtpCodeSubmitted);
     on<AuthSignOutRequested>(_onSignOutRequested);
@@ -60,11 +63,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onPhoneNumberSubmitted(
     PhoneNumberSubmitted event,
-    Emitter<AuthState> emit,
+    Emitter<AuthBlocState> emit,
   ) async {
     emit(AuthLoading());
     try {
-      await Supabase.instance.client.auth.signInWithOtp(
+      await authRepository.signInWithOtp(
         phone: event.phoneNumber,
       );
       emit(AuthOtpSent(event.phoneNumber));
@@ -75,12 +78,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onOtpCodeSubmitted(
     OtpCodeSubmitted event,
-    Emitter<AuthState> emit,
+    Emitter<AuthBlocState> emit,
   ) async {
     emit(AuthLoading());
     try {
-      final response = await Supabase.instance.client.auth.verifyOTP(
-        type: OtpType.sms,
+      final response = await authRepository.verifyOTP(
         token: event.code,
         phone: (state as AuthOtpSent).phoneNumber,
       );
@@ -89,22 +91,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final userId = response.user!.id;
         
         // 1. Fetch Profile
-        final profileData = await Supabase.instance.client
-            .from('profiles')
-            .select()
-            .eq('id', userId)
-            .single();
-        final profile = Profile.fromJson(profileData);
+        final profile = await authRepository.getProfile(userId);
 
         // 2. Fetch Driver record
-        final driverData = await Supabase.instance.client
-            .from('drivers')
-            .select()
-            .eq('id', userId)
-            .maybeSingle();
+        final driver = await authRepository.getDriver(userId);
 
-        if (driverData != null) {
-          final driver = Driver.fromJson(driverData);
+        if (driver != null) {
           emit(AuthAuthenticated(profile, driver: driver));
         } else {
           // Profile exists, but not a driver yet
@@ -120,7 +112,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   void _onSignOutRequested(
     AuthSignOutRequested event,
-    Emitter<AuthState> emit,
+    Emitter<AuthBlocState> emit,
   ) {
     emit(AuthInitial());
   }

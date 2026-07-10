@@ -1,4 +1,4 @@
-package com.zeni.zeni_rider
+package com.hungrydevelopers.zeni
 
 import io.flutter.embedding.android.FlutterActivity
 

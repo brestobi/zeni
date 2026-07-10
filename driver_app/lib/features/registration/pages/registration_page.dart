@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
 import 'package:zeni_utilities/zeni_utilities.dart';
+import 'package:zeni_services/zeni_services.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -20,6 +24,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _vehicleYearController = TextEditingController();
   final _licensePlateController = TextEditingController();
   int _currentStep = 0;
+  final ImagePicker _picker = ImagePicker();
+  File? _licenseImage;
 
   @override
   void dispose() {
@@ -33,15 +39,74 @@ class _RegistrationPageState extends State<RegistrationPage> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _pickImage(Function(File) onPicked) async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      onPicked(File(image.path));
+    }
+  }
+
+  Future<String?> _uploadFile(File file, String bucket, String path) async {
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = '$path/$fileName';
+      await Supabase.instance.client.storage
+          .from(bucket)
+          .upload(storagePath, file);
+      return Supabase.instance.client.storage
+          .from(bucket)
+          .getPublicUrl(storagePath);
+    } catch (e) {
+      debugPrint('Error uploading file: $e');
+      return null;
+    }
+  }
+
+  void _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Upload to Supabase, set driver status to pending_approval
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration submitted! Awaiting approval.'),
-        ),
-      );
-      context.go('/login');
+      if (_licenseImage == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please upload your license photo.')),
+        );
+        return;
+      }
+
+      setState(() {}); // Show loading state
+
+      try {
+        final userId = Supabase.instance.client.auth.currentUser!.id;
+
+        // 1. Upload license image
+        final licenseUrl = await _uploadFile(_licenseImage!, 'driver_documents', userId);
+
+        // 2. Insert/Update Driver record
+        await Supabase.instance.client.from('drivers').upsert({
+          'id': userId,
+          'license_number': _licenseController.text.trim(),
+          'license_image_url': licenseUrl,
+          'status': 'pending_approval',
+        });
+
+        // 3. Insert Vehicle record
+        await Supabase.instance.client.from('vehicles').insert({
+          'driver_id': userId,
+          'make': _vehicleMakeController.text.trim(),
+          'model': _vehicleModelController.text.trim(),
+          'year': int.parse(_vehicleYearController.text.trim()),
+          'plate_number': _licensePlateController.text.trim(),
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration submitted! Awaiting approval.'),
+          ),
+        );
+        context.go('/home');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Registration failed: $e')),
+        );
+      }
     }
   }
 
@@ -106,10 +171,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ),
                     const SizedBox(height: 16),
                     ZeniButton(
-                      label: 'Upload License Photo',
-                      onPressed: () {
-                        // TODO: Use image_picker to capture license
-                      },
+                      label: _licenseImage == null ? 'Upload License Photo' : 'License Photo Selected',
+                      onPressed: () => _pickImage((file) => setState(() => _licenseImage = file)),
                       isOutlined: true,
                       icon: Icons.camera_alt,
                     ),
@@ -117,7 +180,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ZeniButton(
                       label: 'Upload Vehicle Registration',
                       onPressed: () {
-                        // TODO: Use image_picker
+                        // TODO: Implement registration document upload
                       },
                       isOutlined: true,
                       icon: Icons.description,
@@ -126,7 +189,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ZeniButton(
                       label: 'Upload Insurance',
                       onPressed: () {
-                        // TODO: Use image_picker
+                        // TODO: Implement insurance document upload
                       },
                       isOutlined: true,
                       icon: Icons.verified_user,
@@ -172,7 +235,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ZeniButton(
                       label: 'Upload Vehicle Photo',
                       onPressed: () {
-                        // TODO: Use image_picker
+                        // TODO: Implement vehicle photo upload
                       },
                       isOutlined: true,
                       icon: Icons.camera_alt,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -52,8 +54,42 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   const _HomeTab();
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  LatLng? _initialPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _determinePosition();
+  }
+
+  Future<void> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+
+    if (permission == LocationPermission.deniedForever) return;
+
+    final position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _initialPosition = LatLng(position.latitude, position.longitude);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +123,7 @@ class _HomeTab extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
-        // Map placeholder
+        // Map view
         Expanded(
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -95,19 +131,16 @@ class _HomeTab extends StatelessWidget {
               color: Colors.grey[200],
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.map, size: 64, color: Colors.grey),
-                  SizedBox(height: 8),
-                  Text(
-                    'Map will appear here',
-                    style: TextStyle(color: Colors.grey),
+            child: _initialPosition == null
+                ? const Center(child: CircularProgressIndicator())
+                : GoogleMap(
+                    initialCameraPosition: CameraPosition(
+                      target: _initialPosition!,
+                      zoom: 15,
+                    ),
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: true,
                   ),
-                ],
-              ),
-            ),
           ),
         ),
         const SizedBox(height: 16),

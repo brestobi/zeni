@@ -11,3 +11,5 @@ dependencies:
   supabase_flutter: ^2.8.1
   zeni_models:
     path: ../models
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1

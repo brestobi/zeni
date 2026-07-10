@@ -32,7 +32,7 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
+    return BlocListener<AuthBloc, AuthBlocState>(
       listener: (context, state) {
         if (state is AuthOtpSent) {
           context.go('/otp-verify', extra: {
@@ -98,7 +98,7 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
                     prefixIcon: const Icon(Icons.phone),
                   ),
                   const SizedBox(height: 24),
-                  BlocBuilder<AuthBloc, AuthState>(
+                  BlocBuilder<AuthBloc, AuthBlocState>(
                     builder: (context, state) {
                       return ZeniButton(
                         label: 'Send OTP',

@@ -60,70 +60,71 @@ class _HomePageState extends State<HomePage> {
   Widget _buildHomeTab() {
     return BlocBuilder<DriverHomeBloc, DriverHomeState>(
       builder: (context, state) {
-        return Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isOnline ? 'You are online' : 'You are offline',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isOnline
-                            ? 'Waiting for ride requests...'
-                            : 'Go online to start receiving rides',
-                        style: TextStyle(color: Colors.grey[400]),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Switch(
-                    value: _isOnline,
-                    onChanged: (value) {
-                      setState(() => _isOnline = value);
-                      context
-                          .read<DriverHomeBloc>()
-                          .add(DriverToggleOnline(value));
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const Divider(),
-            Expanded(
-              child: GoogleMap(
-                initialCameraPosition: const CameraPosition(
-                  target: LatLng(-26.2041, 28.0473), // Example: Johannesburg
-                  zoom: 14,
-                ),
-                onMapCreated: (controller) => _mapController = controller,
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-              ),
-            ),
-          ],
-        );
+        if (state is DriverIncomingRequest) {
+          return Stack(
+            children: [
+              _buildMapContent(),
+              _buildIncomingRequest(context, state),
+            ],
+          );
+        }
+        return _buildMapContent();
       },
     );
   }
-// ... rest of the file
-            Expanded(
-              child: state is DriverIncomingRequest
-                  ? _buildIncomingRequest(context, state)
-                  : _buildMapPlaceholder(),
+
+  Widget _buildMapContent() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isOnline ? 'You are online' : 'You are offline',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _isOnline
+                        ? 'Waiting for ride requests...'
+                        : 'Go online to start receiving rides',
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Switch(
+                value: _isOnline,
+                onChanged: (value) {
+                  setState(() => _isOnline = value);
+                  context
+                      .read<DriverHomeBloc>()
+                      .add(DriverToggleOnline(value));
+                },
+              ),
+            ],
+          ),
+        ),
+        const Divider(),
+        Expanded(
+          child: GoogleMap(
+            initialCameraPosition: const CameraPosition(
+              target: LatLng(-26.2041, 28.0473), // Example: Johannesburg
+              zoom: 14,
             ),
-          ],
-        );
-      },
+            onMapCreated: (controller) => _mapController = controller,
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+          ),
+        ),
+      ],
     );
   }
 

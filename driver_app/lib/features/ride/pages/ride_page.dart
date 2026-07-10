@@ -1,110 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
+import 'package:zeni_models/zeni_models.dart';
+import '../../home/bloc/driver_home_bloc.dart';
 
-class RidePage extends StatefulWidget {
+class RidePage extends StatelessWidget {
   final String? rideId;
   const RidePage({super.key, this.rideId});
 
   @override
-  State<RidePage> createState() => _RidePageState();
-}
-
-class _RidePageState extends State<RidePage> {
-  String _rideStatus = 'en_route_to_pickup'; // Mock status
-
-  void _updateStatus(String status) {
-    setState(() => _rideStatus = status);
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Map
-            Expanded(
-              child: Container(
-                color: Colors.grey[900],
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.navigation, size: 64, color: Colors.grey),
-                      SizedBox(height: 8),
-                      Text(
-                        'Navigation map',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Ride controls
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Status indicator
-                  Center(
-                    child: _buildStatusChip(),
-                  ),
-                  const SizedBox(height: 16),
-                  // Passenger info
-                  Row(
-                    children: [
-                      const CircleAvatar(
-                        radius: 24,
-                        child: Icon(Icons.person),
-                      ),
-                      const SizedBox(width: 12),
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+      body: BlocBuilder<DriverHomeBloc, DriverHomeState>(
+        builder: (context, state) {
+          if (state is! DriverOnRide) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final ride = state.ride;
+          final status = ride.status;
+
+          return SafeArea(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    color: Colors.grey[900],
+                    child: const Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Passenger Name',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Text('Pickup point address'),
+                          Icon(Icons.navigation, size: 64, color: Colors.grey),
+                          SizedBox(height: 8),
+                          Text('Navigation map', style: TextStyle(color: Colors.grey)),
                         ],
                       ),
-                      const Spacer(),
-                      IconButton(
-                        onPressed: () {
-                          // TODO: Call passenger
-                        },
-                        icon: const Icon(Icons.phone),
-                      ),
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(child: _buildStatusChip(context, status)),
+                      const SizedBox(height: 16),
+                      _buildActionButtons(context, ride, status),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  // Action buttons based on status
-                  _buildActionButtons(),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatusChip() {
-    final (label, icon) = switch (_rideStatus) {
-      'en_route_to_pickup' => ('Heading to pickup', Icons.navigation),
-      'arrived' => ('Arrived at pickup', Icons.location_on),
-      'started' => ('Trip in progress', Icons.directions_car),
-      'completed' => ('Trip completed', Icons.check_circle),
-      _ => ('Unknown', Icons.help),
+  Widget _buildStatusChip(BuildContext context, RideStatus status) {
+    final (label, icon) = switch (status) {
+      RideStatus.accepted => ('Heading to pickup', Icons.navigation),
+      RideStatus.driverArrived => ('Arrived at pickup', Icons.location_on),
+      RideStatus.started => ('Trip in progress', Icons.directions_car),
+      RideStatus.completed => ('Trip completed', Icons.check_circle),
+      _ => (status.name, Icons.help),
     };
 
     return Chip(
@@ -114,44 +77,34 @@ class _RidePageState extends State<RidePage> {
     );
   }
 
-  Widget _buildActionButtons() {
-    switch (_rideStatus) {
-      case 'en_route_to_pickup':
+  Widget _buildActionButtons(BuildContext context, Ride ride, RideStatus status) {
+    final bloc = context.read<DriverHomeBloc>();
+    final rideId = ride.id;
+
+    switch (status) {
+      case RideStatus.accepted:
         return ZeniButton(
           label: 'I\'ve Arrived',
-          onPressed: () => _updateStatus('arrived'),
+          onPressed: () => bloc.add(DriverUpdateRideStatus(rideId, RideStatus.driverArrived)),
           icon: Icons.location_on,
         );
-      case 'arrived':
+      case RideStatus.driverArrived:
         return ZeniButton(
           label: 'Start Trip',
-          onPressed: () => _updateStatus('started'),
+          onPressed: () => bloc.add(DriverUpdateRideStatus(rideId, RideStatus.started)),
           icon: Icons.play_arrow,
         );
-      case 'started':
+      case RideStatus.started:
         return Column(
           children: [
             ZeniButton(
               label: 'Complete Trip',
-              onPressed: () => _updateStatus('completed'),
+              onPressed: () => bloc.add(DriverUpdateRideStatus(rideId, RideStatus.completed)),
               icon: Icons.flag,
-            ),
-            const SizedBox(height: 12),
-            // SOS button
-            OutlinedButton.icon(
-              onPressed: () {
-                // TODO: Trigger SOS alert
-              },
-              icon: const Icon(Icons.warning, color: Colors.orange),
-              label: const Text('Emergency'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange,
-                side: const BorderSide(color: Colors.orange),
-              ),
             ),
           ],
         );
-      case 'completed':
+      case RideStatus.completed:
         return ZeniButton(
           label: 'Back to Home',
           onPressed: () => context.go('/home'),

@@ -25,6 +25,8 @@ create table public.drivers (
   id uuid references public.profiles on delete cascade primary key,
   status text default 'pending_approval' check (status in ('pending_approval', 'active', 'suspended')),
   rating decimal(3,2) default 5.0,
+  license_number text,
+  license_image_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -36,6 +38,7 @@ create table public.vehicles (
   model text not null,
   year int not null,
   plate_number text not null,
+  photo_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

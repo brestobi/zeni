@@ -36,7 +36,7 @@ final class AuthAuthenticated extends AuthState {
 
 final class AuthNewUser extends AuthState {
   final String phoneNumber;
-  const AuthNewUser(this.phoneNumber);
+  AuthNewUser(this.phoneNumber);
 }
 
 final class AuthError extends AuthState {

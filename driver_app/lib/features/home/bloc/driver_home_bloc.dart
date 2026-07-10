@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zeni_models/zeni_models.dart';
+import '../../../core/services/location_service.dart';
 
 // --- Events ---
 sealed class DriverHomeEvent {}
@@ -58,9 +59,10 @@ final class DriverHomeError extends DriverHomeState {
   DriverHomeError(this.message);
 }
 
-// --- BLoC ---
+// ... BLoC class implementation below ...
 class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
   StreamSubscription? _rideRequestSubscription;
+  final LocationService _locationService = LocationService();
 
   DriverHomeBloc() : super(DriverHomeInitial()) {
     on<DriverToggleOnline>(_onToggleOnline);
@@ -73,6 +75,7 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
   @override
   Future<void> close() {
     _rideRequestSubscription?.cancel();
+    _locationService.stopTracking();
     return super.close();
   }
 
@@ -80,11 +83,19 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
     DriverToggleOnline event,
     Emitter<DriverHomeState> emit,
   ) async {
+    final driverId = Supabase.instance.client.auth.currentUser?.id;
+    if (driverId == null) {
+      emit(DriverHomeError('Not authenticated'));
+      return;
+    }
+
     if (event.isOnline) {
       emit(DriverOnlineWaiting());
       _subscribeToRideRequests();
+      await _locationService.startTracking(driverId);
     } else {
       _rideRequestSubscription?.cancel();
+      _locationService.stopTracking();
       emit(DriverOffline());
     }
   }

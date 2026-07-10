@@ -32,7 +32,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
+    return BlocListener<AuthBloc, AuthBlocState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
           context.go('/home');
@@ -79,7 +79,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                     prefixIcon: const Icon(Icons.lock),
                   ),
                   const SizedBox(height: 24),
-                  BlocBuilder<AuthBloc, AuthState>(
+                  BlocBuilder<AuthBloc, AuthBlocState>(
                     builder: (context, state) {
                       return ZeniButton(
                         label: 'Verify',
