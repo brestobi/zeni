@@ -17,6 +17,11 @@ final class LocationUpdated extends LocationEvent {
   LocationUpdated(this.location);
 }
 
+final class LocationFailed extends LocationEvent {
+  final String message;
+  LocationFailed(this.message);
+}
+
 // --- States ---
 sealed class LocationState {}
 
@@ -48,6 +53,7 @@ class LocationTrackingBloc extends Bloc<LocationEvent, LocationState> {
     on<StartTracking>(_onStartTracking);
     on<StopTracking>(_onStopTracking);
     on<LocationUpdated>(_onLocationUpdated);
+    on<LocationFailed>(_onLocationFailed);
   }
 
   Future<void> _onStartTracking(
@@ -56,9 +62,21 @@ class LocationTrackingBloc extends Bloc<LocationEvent, LocationState> {
   ) async {
     _driverId = event.driverId;
     _locationSubscription = _locationService.locationStream.listen(
-      (location) => add(LocationUpdated(location)),
-      onError: (e) => add(StopTracking()),
+      (location) {
+        if (!isClosed) add(LocationUpdated(location));
+      },
+      onError: (e) {
+        if (!isClosed) add(LocationFailed(e.toString()));
+      },
     );
+  }
+
+  void _onLocationFailed(
+    LocationFailed event,
+    Emitter<LocationState> emit,
+  ) {
+    _locationSubscription?.cancel();
+    emit(LocationError(event.message));
   }
 
   Future<void> _onLocationUpdated(
@@ -67,15 +85,23 @@ class LocationTrackingBloc extends Bloc<LocationEvent, LocationState> {
   ) async {
     if (_driverId == null) return;
 
-    // Upsert to Supabase
-    await _supabase.client.from('ride_locations').upsert({
-      'driver_id': _driverId,
-      'latitude': event.location.latitude,
-      'longitude': event.location.longitude,
-      'updated_at': DateTime.now().toIso8601String(),
-    });
-
-    emit(LocationTracking(event.location));
+    try {
+      // Upsert using driver_id as the conflict target so we always update
+      // the single row for this driver rather than inserting duplicates.
+      await _supabase.client.from('ride_locations').upsert(
+        {
+          'driver_id': _driverId,
+          'latitude': event.location.latitude,
+          'longitude': event.location.longitude,
+          'heading': event.location.heading,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        onConflict: 'driver_id',
+      );
+      emit(LocationTracking(event.location));
+    } catch (e) {
+      emit(LocationError(e.toString()));
+    }
   }
 
   Future<void> _onStopTracking(

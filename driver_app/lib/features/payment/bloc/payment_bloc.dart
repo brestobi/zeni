@@ -40,11 +40,27 @@ class PaymentBloc extends Bloc<PaymentEvent, PaymentState> {
   ) async {
     emit(PaymentProcessing());
     try {
+      // Guard: verify the ride is actually completed before accepting payment.
+      // This prevents a driver from confirming cash while the trip is still active.
+      final rideData = await _supabase
+          .from('rides')
+          .select('status')
+          .eq('id', event.rideId)
+          .single();
+
+      final currentStatus = rideData['status'] as String?;
+      if (currentStatus != RideStatus.completed.name) {
+        emit(PaymentError(
+          'Cannot confirm payment: ride is not yet completed (status: $currentStatus).',
+        ));
+        return;
+      }
+
       await _supabase.from('rides').update({
         'payment_status': PaymentStatus.captured.name,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', event.rideId);
-      
+
       emit(PaymentSuccess());
     } catch (e) {
       emit(PaymentError(e.toString()));

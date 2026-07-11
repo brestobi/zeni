@@ -5,28 +5,28 @@ import 'package:zeni_widgets/zeni_widgets.dart';
 import 'package:zeni_utilities/zeni_utilities.dart';
 import '../bloc/auth_bloc.dart';
 
-class PhoneLoginPage extends StatefulWidget {
-  const PhoneLoginPage({super.key});
+class EmailLoginPage extends StatefulWidget {
+  const EmailLoginPage({super.key});
 
   @override
-  State<PhoneLoginPage> createState() => _PhoneLoginPageState();
+  State<EmailLoginPage> createState() => _EmailLoginPageState();
 }
 
-class _PhoneLoginPageState extends State<PhoneLoginPage> {
-  final _phoneController = TextEditingController();
+class _EmailLoginPageState extends State<EmailLoginPage> {
+  final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
-  void _submitPhoneNumber() {
+  void _submitEmail() {
     if (_formKey.currentState?.validate() ?? false) {
       context
           .read<AuthBloc>()
-          .add(PhoneNumberSubmitted(_phoneController.text.trim()));
+          .add(EmailSubmitted(_emailController.text.trim()));
     }
   }
 
@@ -49,6 +49,7 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
         }
       },
       child: Scaffold(
+        appBar: AppBar(title: const Text('Email Login')),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -59,52 +60,41 @@ class _PhoneLoginPageState extends State<PhoneLoginPage> {
                 children: [
                   const Spacer(flex: 2),
                   Icon(
-                    Icons.local_taxi_rounded,
+                    Icons.email_rounded,
                     size: 80,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'Welcome to Zeni',
+                    'Email Login',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Enter your phone number to get started',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.6),
-                        ),
-                  ),
                   const SizedBox(height: 48),
                   ZeniTextField(
-                    label: 'Phone Number',
-                    hint: '+27 81 234 5678',
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    validator: (v) => Validators.phone(v),
-                    prefixIcon: const Icon(Icons.phone),
+                    label: 'Email Address',
+                    hint: 'user@example.com',
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) => Validators.email(v),
+                    prefixIcon: const Icon(Icons.email),
                   ),
                   const SizedBox(height: 24),
                   BlocBuilder<AuthBloc, AuthState>(
                     builder: (context, state) {
                       return ZeniButton(
                         label: 'Send OTP',
-                        onPressed: _submitPhoneNumber,
+                        onPressed: _submitEmail,
                         isLoading: state is AuthLoading,
                       );
                     },
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () => context.go('/email-login'),
-                    child: const Text('Login with Email'),
+                    onPressed: () => context.go('/login'),
+                    child: const Text('Login with Phone'),
                   ),
                   const SizedBox(height: 8),
                   ZeniButton(

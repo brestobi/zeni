@@ -59,18 +59,30 @@ final class DriverHomeError extends DriverHomeState {
   DriverHomeError(this.message);
 }
 
-// ... BLoC class implementation below ...
+// --- BLoC ---
 class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
+  final SupabaseClient _supabase;
+  final LocationService _locationService;
   StreamSubscription? _rideRequestSubscription;
-  final LocationService _locationService = LocationService();
 
-  DriverHomeBloc() : super(DriverHomeInitial()) {
+  // Exposed for dependent widgets/blocs that need the same client.
+  SupabaseClient get supabase => _supabase;
+
+  /// Dependencies are injected for testability and to avoid coupling
+  /// the bloc to global singletons.
+  DriverHomeBloc({
+    required SupabaseClient supabase,
+    LocationService? locationService,
+  })  : _supabase = supabase,
+        _locationService = locationService ?? LocationService(),
+        super(DriverHomeInitial()) {
     on<DriverToggleOnline>(_onToggleOnline);
     on<DriverNewRideRequest>(_onNewRideRequest);
     on<DriverAcceptRide>(_onAcceptRide);
     on<DriverDeclineRide>(_onDeclineRide);
     on<DriverUpdateRideStatus>(_onUpdateRideStatus);
   }
+
 
   @override
   Future<void> close() {
@@ -83,7 +95,7 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
     DriverToggleOnline event,
     Emitter<DriverHomeState> emit,
   ) async {
-    final driverId = Supabase.instance.client.auth.currentUser?.id;
+    final driverId = _supabase.auth.currentUser?.id;
     if (driverId == null) {
       emit(DriverHomeError('Not authenticated'));
       return;
@@ -94,19 +106,20 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
       _subscribeToRideRequests();
       await _locationService.startTracking(driverId);
     } else {
-      _rideRequestSubscription?.cancel();
+      await _rideRequestSubscription?.cancel();
+      _rideRequestSubscription = null;
       _locationService.stopTracking();
       emit(DriverOffline());
     }
   }
 
   void _subscribeToRideRequests() {
-    _rideRequestSubscription = Supabase.instance.client
+    _rideRequestSubscription = _supabase
         .from('ride_requests')
         .stream(primaryKey: ['id'])
         .eq('status', 'pending')
         .listen((data) {
-      if (data.isNotEmpty) {
+      if (data.isNotEmpty && !isClosed) {
         final request = RideRequest.fromJson(data.first);
         add(DriverNewRideRequest(request));
       }
@@ -126,21 +139,43 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
   ) async {
     emit(DriverHomeLoading());
     try {
-      final driverId = Supabase.instance.client.auth.currentUser?.id;
+      final driverId = _supabase.auth.currentUser?.id;
       if (driverId == null) {
         emit(DriverHomeError('Not authenticated'));
         return;
       }
 
-      // 1. Create a ride record
-      final rideData = await Supabase.instance.client.from('rides').insert({
+      // Fetch the original ride_request to get the passenger_id.
+      // This is required because the rides table has a NOT NULL constraint
+      // on passenger_id, and Ride.fromJson() expects it as a required field.
+      final requestData = await _supabase
+          .from('ride_requests')
+          .select()
+          .eq('id', event.requestId)
+          .single();
+
+      final passengerId = requestData['passenger_id'] as String;
+      final now = DateTime.now().toIso8601String();
+
+      // 1. Create a ride record with all required fields.
+      final rideData = await _supabase.from('rides').insert({
         'ride_request_id': event.requestId,
         'driver_id': driverId,
-        'status': 'accepted',
+        'passenger_id': passengerId,
+        'status': RideStatus.accepted.name,
+        'driver_accepted_at': now,
+        // Copy location fields from the request so Ride.fromJson can parse them.
+        'pickup_latitude': requestData['pickup_latitude'],
+        'pickup_longitude': requestData['pickup_longitude'],
+        'pickup_address': requestData['pickup_address'],
+        'dropoff_latitude': requestData['dropoff_latitude'],
+        'dropoff_longitude': requestData['dropoff_longitude'],
+        'dropoff_address': requestData['dropoff_address'],
+        'payment_method': requestData['payment_method'],
       }).select().single();
 
-      // 2. Update ride request status
-      await Supabase.instance.client
+      // 2. Update ride request status to prevent other drivers from seeing it.
+      await _supabase
           .from('ride_requests')
           .update({'status': 'accepted'})
           .eq('id', event.requestId);
@@ -159,8 +194,8 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
     emit(DriverHomeLoading());
     try {
       final now = DateTime.now().toIso8601String();
-      final updateMap = {'status': event.newStatus.name};
-      
+      final updateMap = <String, dynamic>{'status': event.newStatus.name};
+
       if (event.newStatus == RideStatus.driverArrived) {
         updateMap['driver_arrived_at'] = now;
       } else if (event.newStatus == RideStatus.started) {
@@ -169,13 +204,13 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
         updateMap['completed_at'] = now;
       }
 
-      final updatedRideData = await Supabase.instance.client
+      final updatedRideData = await _supabase
           .from('rides')
           .update(updateMap)
           .eq('id', event.rideId)
           .select()
           .single();
-      
+
       final updatedRide = Ride.fromJson(updatedRideData);
       emit(DriverOnRide(updatedRide));
     } catch (e) {

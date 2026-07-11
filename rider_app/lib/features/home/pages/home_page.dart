@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../core/services/location_service.dart';
+import '../bloc/home_bloc.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,10 +23,13 @@ class _HomePageState extends State<HomePage> {
       body: SafeArea(
         child: IndexedStack(
           index: _currentIndex,
-          children: const [
-            _HomeTab(),
-            _HistoryTabPlaceholder(),
-            _ProfileTabPlaceholder(),
+          children: [
+            BlocProvider(
+              create: (_) => HomeBloc()..add(LoadNearbyDrivers()),
+              child: const _HomeTab(),
+            ),
+            const _HistoryTabPlaceholder(),
+            const _ProfileTabPlaceholder(),
           ],
         ),
       ),
@@ -71,24 +77,15 @@ class _HomeTabState extends State<_HomeTab> {
   }
 
   Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
-
-    if (permission == LocationPermission.deniedForever) return;
+    final granted = await LocationService.requestPermission();
+    if (!granted) return;
 
     final position = await Geolocator.getCurrentPosition();
-    setState(() {
-      _initialPosition = LatLng(position.latitude, position.longitude);
-    });
+    if (mounted) {
+      setState(() {
+        _initialPosition = LatLng(position.latitude, position.longitude);
+      });
+    }
   }
 
   @override
@@ -133,13 +130,35 @@ class _HomeTabState extends State<_HomeTab> {
             ),
             child: _initialPosition == null
                 ? const Center(child: CircularProgressIndicator())
-                : GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: _initialPosition!,
-                      zoom: 15,
-                    ),
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
+                : BlocBuilder<HomeBloc, HomeState>(
+                    builder: (context, state) {
+                      Set<Marker> markers = {};
+                      if (state is HomeLoaded) {
+                        markers = state.nearbyDrivers.map((driver) {
+                          return Marker(
+                            markerId: MarkerId(driver.id),
+                            position: LatLng(driver.latitude, driver.longitude),
+                            icon: BitmapDescriptor.defaultMarkerWithHue(
+                              BitmapDescriptor.hueOrange,
+                            ),
+                            infoWindow: const InfoWindow(title: 'Zeni Driver'),
+                            rotation: driver.heading ?? 0.0,
+                            flat: true,
+                            anchor: const Offset(0.5, 0.5),
+                          );
+                        }).toSet();
+                      }
+
+                      return GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: _initialPosition!,
+                          zoom: 15,
+                        ),
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: true,
+                        markers: markers,
+                      );
+                    },
                   ),
           ),
         ),

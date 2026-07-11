@@ -128,28 +128,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildMapPlaceholder() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.map, size: 64, color: Colors.grey),
-            SizedBox(height: 8),
-            Text(
-              'Map will appear here',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildIncomingRequest(
       BuildContext context, DriverIncomingRequest state) {

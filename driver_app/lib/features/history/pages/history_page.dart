@@ -9,10 +9,16 @@ class HistoryPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      return const Scaffold(
+        body: Center(child: Text('Not authenticated. Please sign in again.')),
+      );
+    }
     return BlocProvider(
       create: (context) => HistoryBloc(
         repository: HistoryRepository(Supabase.instance.client),
-        userId: Supabase.instance.client.auth.currentUser!.id,
+        userId: userId,
       )..add(LoadHistory()),
       child: const HistoryView(),
     );

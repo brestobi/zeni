@@ -5,8 +5,8 @@ import 'package:zeni_widgets/zeni_widgets.dart';
 import '../bloc/auth_bloc.dart';
 
 class OtpVerifyPage extends StatefulWidget {
-  final String phoneNumber;
-  const OtpVerifyPage({super.key, required this.phoneNumber});
+  final String identifier;
+  const OtpVerifyPage({super.key, required this.identifier});
 
   @override
   State<OtpVerifyPage> createState() => _OtpVerifyPageState();
@@ -64,7 +64,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'We sent a 6-digit code to ${widget.phoneNumber}',
+                    'We sent a 6-digit code to ${widget.identifier}',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
@@ -91,7 +91,7 @@ class _OtpVerifyPageState extends State<OtpVerifyPage> {
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () => context.pop(),
-                    child: const Text('Change phone number'),
+                    child: const Text('Change identifier'),
                   ),
                 ],
               ),

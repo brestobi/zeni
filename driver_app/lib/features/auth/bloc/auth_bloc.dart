@@ -80,27 +80,38 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
     OtpCodeSubmitted event,
     Emitter<AuthBlocState> emit,
   ) async {
+    // Capture current state BEFORE emitting loading, to avoid an unsafe cast
+    // if the state was changed between event dispatch and handler execution.
+    final currentState = state;
+    if (currentState is! AuthOtpSent) {
+      emit(AuthError('Unexpected state: OTP submitted without sending OTP first.'));
+      return;
+    }
+
     emit(AuthLoading());
     try {
       final response = await authRepository.verifyOTP(
         token: event.code,
-        phone: (state as AuthOtpSent).phoneNumber,
+        phone: currentState.phoneNumber,
       );
 
       if (response.user != null) {
         final userId = response.user!.id;
-        
+
         // 1. Fetch Profile
         final profile = await authRepository.getProfile(userId);
 
         // 2. Fetch Driver record
         final driver = await authRepository.getDriver(userId);
 
-        if (driver != null) {
-          emit(AuthAuthenticated(profile, driver: driver));
+        if (driver == null) {
+          // Profile exists but has never started driver registration.
+          emit(AuthNewUser(response.user!.phone ?? currentState.phoneNumber));
+        } else if (!driver.isVerified) {
+          // Driver registered but not yet approved by admin.
+          emit(AuthRegistrationPending(profile));
         } else {
-          // Profile exists, but not a driver yet
-          emit(AuthNewUser(response.user!.phone!));
+          emit(AuthAuthenticated(profile, driver: driver));
         }
       } else {
         emit(AuthError('Verification failed'));
@@ -110,10 +121,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
     }
   }
 
-  void _onSignOutRequested(
+  Future<void> _onSignOutRequested(
     AuthSignOutRequested event,
     Emitter<AuthBlocState> emit,
-  ) {
+  ) async {
+    try {
+      // Invalidate the Supabase session on the server, not just locally.
+      await authRepository.signOut();
+    } catch (_) {
+      // Ignore sign-out errors — still reset local state.
+    }
     emit(AuthInitial());
   }
 }

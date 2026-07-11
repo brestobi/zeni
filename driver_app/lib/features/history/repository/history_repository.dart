@@ -15,6 +15,6 @@ class HistoryRepository {
         .eq('status', 'completed')
         .order('completed_at', ascending: false);
 
-    return (data as List).map((json) => Ride.fromJson(json)).toList();
+    return data.map((json) => Ride.fromJson(json)).toList();
   }
 }

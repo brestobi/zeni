@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../bloc/ride_request_bloc.dart';
+import '../../home/bloc/driver_home_bloc.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
 
+/// Displays the first available pending ride request and lets the driver
+/// accept or decline it.
+///
+/// All DB mutations are routed through [DriverHomeBloc] to avoid the
+/// race condition of inserting a ride record twice (once here and once
+/// in the bloc's _onAcceptRide handler).
 class IncomingRequestPage extends StatelessWidget {
   const IncomingRequestPage({super.key});
 
@@ -11,7 +17,7 @@ class IncomingRequestPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => DriverRideRequestBloc(
-        supabase: Supabase.instance.client,
+        supabase: context.read<DriverHomeBloc>().supabase,
       )..add(ListenForRideRequests()),
       child: const IncomingRequestView(),
     );
@@ -35,27 +41,50 @@ class IncomingRequestView extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Pickup: ${request.pickupAddress}'),
-                  Text('Dropoff: ${request.dropoffAddress}'),
+                  Text(
+                    'Pickup: ${request.pickupAddress}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Dropoff: ${request.dropoffAddress}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                   const Spacer(),
-                  ZeniButton(
-                    label: 'Accept Ride',
-                    onPressed: () async {
-                      // Logic to accept ride (update status in DB)
-                      await Supabase.instance.client
-                          .from('rides')
-                          .insert({
-                        'ride_request_id': request.id,
-                        'driver_id': Supabase.instance.client.auth.currentUser!.id,
-                        'status': 'accepted',
-                      });
-                      
-                      await Supabase.instance.client
-                          .from('ride_requests')
-                          .update({'status': 'accepted'})
-                          .eq('id', request.id);
-                    },
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ZeniButton(
+                          label: 'Decline',
+                          isOutlined: true,
+                          onPressed: () {
+                            // Route decline through DriverHomeBloc so
+                            // that state stays consistent.
+                            context
+                                .read<DriverHomeBloc>()
+                                .add(DriverDeclineRide(request.id));
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ZeniButton(
+                          label: 'Accept',
+                          onPressed: () {
+                            // Route acceptance through DriverHomeBloc only.
+                            // The bloc handles the DB insert, so we must NOT
+                            // duplicate it here.
+                            context
+                                .read<DriverHomeBloc>()
+                                .add(DriverAcceptRide(request.id));
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

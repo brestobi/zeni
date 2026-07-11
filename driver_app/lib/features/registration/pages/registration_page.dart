@@ -74,7 +74,13 @@ class _RegistrationPageState extends State<RegistrationPage> {
       setState(() {}); // Show loading state
 
       try {
-        final userId = Supabase.instance.client.auth.currentUser!.id;
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Session expired. Please sign in again.')),
+          );
+          return;
+        }
 
         // 1. Upload license image
         final licenseUrl = await _uploadFile(_licenseImage!, 'driver_documents', userId);

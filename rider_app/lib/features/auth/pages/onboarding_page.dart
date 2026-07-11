@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
@@ -16,6 +17,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
   final _emergencyNameController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,10 +28,39 @@ class _OnboardingPageState extends State<OnboardingPage> {
     super.dispose();
   }
 
-  void _submitProfile() {
+  Future<void> _submitProfile() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // TODO: Create passenger profile in Supabase
-      context.go('/home');
+      setState(() => _isLoading = true);
+      try {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Session expired. Please sign in again.')),
+            );
+          }
+          return;
+        }
+        await Supabase.instance.client.from('profiles').update({
+          'full_name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+        }).eq('id', userId);
+
+        // Also ensure passenger record exists
+        await Supabase.instance.client.from('passengers').upsert({
+          'id': userId,
+        });
+
+        if (mounted) context.go('/home');
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error saving profile: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -65,7 +96,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   hint: 'john@example.com',
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: Validators.email,
+                  validator: (v) => v != null && v.isNotEmpty ? Validators.email(v) : null,
                   prefixIcon: const Icon(Icons.email),
                 ),
                 const SizedBox(height: 32),
@@ -94,6 +125,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 ZeniButton(
                   label: 'Continue',
                   onPressed: _submitProfile,
+                  isLoading: _isLoading,
                 ),
               ],
             ),

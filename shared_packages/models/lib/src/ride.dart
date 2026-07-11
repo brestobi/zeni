@@ -78,6 +78,7 @@ class Ride {
         paymentStatus: json['payment_status'] != null
             ? PaymentStatus.values.firstWhere(
                 (e) => e.name == json['payment_status'],
+                orElse: () => PaymentStatus.pending,
               )
             : null,
         fare: (json['fare'] as num?)?.toDouble(),

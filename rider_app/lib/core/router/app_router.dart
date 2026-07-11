@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/pages/phone_login_page.dart';
+import '../../features/auth/pages/email_login_page.dart';
 import '../../features/auth/pages/otp_verify_page.dart';
 import '../../features/auth/pages/onboarding_page.dart';
 import '../../features/home/pages/home_page.dart';
@@ -21,11 +22,15 @@ final appRouter = GoRouter(
       builder: (context, state) => const PhoneLoginPage(),
     ),
     GoRoute(
+      path: '/email-login',
+      builder: (context, state) => const EmailLoginPage(),
+    ),
+    GoRoute(
       path: '/otp-verify',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>;
         return OtpVerifyPage(
-          phoneNumber: extra['phoneNumber'] as String,
+          identifier: extra['identifier'] as String,
         );
       },
     ),

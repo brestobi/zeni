@@ -9,6 +9,7 @@ abstract class AuthRepository {
   });
   Future<Profile> getProfile(String userId);
   Future<Driver?> getDriver(String userId);
+  Future<void> signOut();
 }
 
 class SupabaseAuthRepository implements AuthRepository {
@@ -44,5 +45,10 @@ class SupabaseAuthRepository implements AuthRepository {
     final data = await _client.from('drivers').select().eq('id', userId).maybeSingle();
     if (data == null) return null;
     return Driver.fromJson(data);
+  }
+
+  @override
+  Future<void> signOut() async {
+    await _client.auth.signOut();
   }
 }
