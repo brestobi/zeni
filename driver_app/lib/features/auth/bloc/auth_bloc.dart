@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zeni_models/zeni_models.dart';
 import '../repository/auth_repository.dart';
@@ -10,6 +11,20 @@ final class PhoneNumberSubmitted extends AuthEvent {
   final String phoneNumber;
   PhoneNumberSubmitted(this.phoneNumber);
 }
+
+final class EmailPasswordSignUpRequested extends AuthEvent {
+  final String email;
+  final String password;
+  EmailPasswordSignUpRequested({required this.email, required this.password});
+}
+
+final class EmailPasswordSignInRequested extends AuthEvent {
+  final String email;
+  final String password;
+  EmailPasswordSignInRequested({required this.email, required this.password});
+}
+
+final class GoogleSignInRequested extends AuthEvent {}
 
 final class OtpCodeSubmitted extends AuthEvent {
   final String code;
@@ -57,6 +72,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
 
   AuthBloc({required this.authRepository}) : super(AuthInitial()) {
     on<PhoneNumberSubmitted>(_onPhoneNumberSubmitted);
+    on<EmailPasswordSignUpRequested>(_onEmailPasswordSignUpRequested);
+    on<EmailPasswordSignInRequested>(_onEmailPasswordSignInRequested);
+    on<GoogleSignInRequested>(_onGoogleSignInRequested);
     on<OtpCodeSubmitted>(_onOtpCodeSubmitted);
     on<AuthSignOutRequested>(_onSignOutRequested);
   }
@@ -71,6 +89,119 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
         phone: event.phoneNumber,
       );
       emit(AuthOtpSent(event.phoneNumber));
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onEmailPasswordSignUpRequested(
+    EmailPasswordSignUpRequested event,
+    Emitter<AuthBlocState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final response = await authRepository.signUpWithEmailPassword(
+        email: event.email,
+        password: event.password,
+      );
+
+      if (response.user != null) {
+        final userId = response.user!.id;
+        final profile = await authRepository.getOrCreateProfile(
+          userId,
+          response.user!.email ?? event.email,
+        );
+        emit(AuthNewUser(response.user!.email ?? event.email));
+      } else {
+        emit(AuthError('Sign up failed'));
+      }
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onEmailPasswordSignInRequested(
+    EmailPasswordSignInRequested event,
+    Emitter<AuthBlocState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final response = await authRepository.signInWithEmailPassword(
+        email: event.email,
+        password: event.password,
+      );
+
+      if (response.user != null) {
+        final userId = response.user!.id;
+        final profile = await authRepository.getOrCreateProfile(
+          userId,
+          response.user!.email ?? event.email,
+        );
+        final driver = await authRepository.getDriver(userId);
+
+        if (driver == null) {
+          emit(AuthNewUser(response.user!.email ?? event.email));
+        } else if (!driver.isVerified) {
+          emit(AuthRegistrationPending(profile));
+        } else {
+          emit(AuthAuthenticated(profile, driver: driver));
+        }
+      } else {
+        emit(AuthError('Sign in failed'));
+      }
+    } catch (e) {
+      emit(AuthError(e.toString()));
+    }
+  }
+
+  Future<void> _onGoogleSignInRequested(
+    GoogleSignInRequested event,
+    Emitter<AuthBlocState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      // Use native Google Sign-In (no browser)
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email', 'profile'],
+      );
+
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        emit(AuthError('Google sign-in cancelled'));
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken != null) {
+        final response = await authRepository.signInWithGoogle(
+          idToken: idToken,
+          accessToken: accessToken,
+        );
+
+        if (response.user != null) {
+          final userId = response.user!.id;
+          final profile = await authRepository.getOrCreateProfile(
+            userId,
+            response.user!.email ?? googleUser.email,
+          );
+          final driver = await authRepository.getDriver(userId);
+
+          if (driver == null) {
+            emit(AuthNewUser(response.user!.email ?? googleUser.email));
+          } else if (!driver.isVerified) {
+            emit(AuthRegistrationPending(profile));
+          } else {
+            emit(AuthAuthenticated(profile, driver: driver));
+          }
+        } else {
+          emit(AuthError('Google sign-in failed'));
+        }
+      } else {
+        emit(AuthError('Failed to get Google ID token'));
+      }
     } catch (e) {
       emit(AuthError(e.toString()));
     }

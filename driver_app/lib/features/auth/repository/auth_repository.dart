@@ -7,7 +7,19 @@ abstract class AuthRepository {
     required String phone,
     required String token,
   });
-  Future<Profile> getOrCreateProfile(String userId, String phoneNumber);
+  Future<AuthResponse> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  });
+  Future<AuthResponse> signInWithEmailPassword({
+    required String email,
+    required String password,
+  });
+  Future<AuthResponse> signInWithGoogle({
+    required String idToken,
+    String? accessToken,
+  });
+  Future<Profile> getOrCreateProfile(String userId, String identifier);
   Future<Driver?> getDriver(String userId);
   Future<void> signOut();
 }
@@ -31,6 +43,40 @@ class SupabaseAuthRepository implements AuthRepository {
       type: OtpType.sms,
       token: token,
       phone: phone,
+    );
+  }
+
+  @override
+  Future<AuthResponse> signUpWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    return await _client.auth.signUp(
+      email: email,
+      password: password,
+    );
+  }
+
+  @override
+  Future<AuthResponse> signInWithEmailPassword({
+    required String email,
+    required String password,
+  }) async {
+    return await _client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  @override
+  Future<AuthResponse> signInWithGoogle({
+    required String idToken,
+    String? accessToken,
+  }) async {
+    return await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
     );
   }
 

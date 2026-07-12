@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/auth/pages/auth_method_page.dart';
 import '../../features/auth/pages/phone_login_page.dart';
+import '../../features/auth/pages/email_signin_page.dart';
+import '../../features/auth/pages/email_signup_page.dart';
 import '../../features/auth/pages/otp_verify_page.dart';
 import '../../features/registration/pages/registration_page.dart';
 import '../../features/home/pages/home_page.dart';
@@ -12,11 +15,23 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/login',
+  initialLocation: '/auth-method',
   routes: [
     GoRoute(
-      path: '/login',
+      path: '/auth-method',
+      builder: (context, state) => const AuthMethodPage(),
+    ),
+    GoRoute(
+      path: '/phone-signin',
       builder: (context, state) => const PhoneLoginPage(),
+    ),
+    GoRoute(
+      path: '/email-signin',
+      builder: (context, state) => const EmailSignInPage(),
+    ),
+    GoRoute(
+      path: '/email-signup',
+      builder: (context, state) => const EmailSignUpPage(),
     ),
     GoRoute(
       path: '/otp-verify',
