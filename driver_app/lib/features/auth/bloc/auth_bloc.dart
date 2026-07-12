@@ -97,9 +97,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
 
       if (response.user != null) {
         final userId = response.user!.id;
+        final phoneNumber = response.user!.phone ?? currentState.phoneNumber;
 
-        // 1. Fetch Profile
-        final profile = await authRepository.getProfile(userId);
+        // 1. Get or create Profile (auto-creates if doesn't exist)
+        final profile = await authRepository.getOrCreateProfile(userId, phoneNumber);
 
         // 2. Fetch Driver record
         final driver = await authRepository.getDriver(userId);

@@ -7,7 +7,7 @@ abstract class AuthRepository {
     required String phone,
     required String token,
   });
-  Future<Profile> getProfile(String userId);
+  Future<Profile> getOrCreateProfile(String userId, String phoneNumber);
   Future<Driver?> getDriver(String userId);
   Future<void> signOut();
 }
@@ -35,9 +35,29 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<Profile> getProfile(String userId) async {
-    final data = await _client.from('profiles').select().eq('id', userId).single();
-    return Profile.fromJson(data);
+  Future<Profile> getOrCreateProfile(String userId, String phoneNumber) async {
+    // Try to fetch existing profile
+    final existing = await _client
+        .from('profiles')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (existing != null) {
+      return Profile.fromJson(existing);
+    }
+
+    // Create new profile if it doesn't exist
+    final now = DateTime.now().toIso8601String();
+    final newProfile = {
+      'id': userId,
+      'phone_number': phoneNumber,
+      'created_at': now,
+      'updated_at': now,
+    };
+
+    await _client.from('profiles').insert(newProfile);
+    return Profile.fromJson(newProfile);
   }
 
   @override

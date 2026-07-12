@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:zeni_widgets/zeni_widgets.dart';
 import 'package:zeni_utilities/zeni_utilities.dart';
 import 'package:zeni_services/zeni_services.dart';
+import 'package:zeni_models/zeni_models.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -24,8 +25,10 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _vehicleYearController = TextEditingController();
   final _licensePlateController = TextEditingController();
   int _currentStep = 0;
+  VehicleType? _selectedVehicleType = VehicleType.standard;
   final ImagePicker _picker = ImagePicker();
   File? _licenseImage;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -46,16 +49,17 @@ class _RegistrationPageState extends State<RegistrationPage> {
     }
   }
 
-  Future<String?> _uploadFile(File file, String bucket, String path) async {
+  Future<String?> _uploadFile(
+    File file,
+    String bucket,
+    String folder,
+    String filename,
+  ) async {
     try {
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storagePath = '$path/$fileName';
-      await Supabase.instance.client.storage
-          .from(bucket)
-          .upload(storagePath, file);
-      return Supabase.instance.client.storage
-          .from(bucket)
-          .getPublicUrl(storagePath);
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_$filename';
+      final storagePath = '$folder/$fileName';
+      await Supabase.instance.client.storage.from(bucket).upload(storagePath, file);
+      return Supabase.instance.client.storage.from(bucket).getPublicUrl(storagePath);
     } catch (e) {
       debugPrint('Error uploading file: $e');
       return null;
@@ -71,7 +75,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
         return;
       }
 
-      setState(() {}); // Show loading state
+      if (_selectedVehicleType == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a vehicle type.')),
+        );
+        return;
+      }
+
+      setState(() => _isSubmitting = true);
 
       try {
         final userId = Supabase.instance.client.auth.currentUser?.id;
@@ -82,36 +93,68 @@ class _RegistrationPageState extends State<RegistrationPage> {
           return;
         }
 
-        // 1. Upload license image
-        final licenseUrl = await _uploadFile(_licenseImage!, 'driver_documents', userId);
-
-        // 2. Insert/Update Driver record
-        await Supabase.instance.client.from('drivers').upsert({
-          'id': userId,
-          'license_number': _licenseController.text.trim(),
-          'license_image_url': licenseUrl,
-          'status': 'pending_approval',
-        });
-
-        // 3. Insert Vehicle record
-        await Supabase.instance.client.from('vehicles').insert({
-          'driver_id': userId,
-          'make': _vehicleMakeController.text.trim(),
-          'model': _vehicleModelController.text.trim(),
-          'year': int.parse(_vehicleYearController.text.trim()),
-          'plate_number': _licensePlateController.text.trim(),
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Registration submitted! Awaiting approval.'),
-          ),
+        // 1. Upload license image to driver_documents bucket
+        final licenseUrl = await _uploadFile(
+          _licenseImage!,
+          'driver_documents',
+          userId,
+          'license',
         );
-        context.go('/home');
+
+        if (licenseUrl == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to upload license photo. Please try again.')),
+          );
+          return;
+        }
+
+        // 2. Submit registration through BLoC
+        if (mounted) {
+          // For now, directly call the database API since registration_bloc is being tested
+          await Supabase.instance.client.from('profiles').update({
+            'full_name': _nameController.text.trim(),
+            if (_emailController.text.trim().isNotEmpty)
+              'email': _emailController.text.trim(),
+            'updated_at': DateTime.now().toIso8601String(),
+          }).eq('id', userId);
+
+          await Supabase.instance.client.from('drivers').upsert({
+            'id': userId,
+            'license_number': _licenseController.text.trim(),
+            'license_image_url': licenseUrl,
+            'is_verified': false,
+            'status': DriverStatus.pendingApproval.name,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'id');
+
+          await Supabase.instance.client.from('vehicles').insert({
+            'driver_id': userId,
+            'make': _vehicleMakeController.text.trim(),
+            'model': _vehicleModelController.text.trim(),
+            'year': int.parse(_vehicleYearController.text.trim()),
+            'plate_number': _licensePlateController.text.trim(),
+            'vehicle_type': _selectedVehicleType!.name,
+            'is_active': true,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registration submitted! Awaiting approval.'),
+            ),
+          );
+          context.go('/home');
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Registration failed: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSubmitting = false);
       }
     }
   }
@@ -153,9 +196,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     ),
                     const SizedBox(height: 16),
                     ZeniTextField(
-                      label: 'Email',
+                      label: 'Email (optional)',
                       controller: _emailController,
-                      validator: Validators.email,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) =>
+                          v != null && v.isNotEmpty ? Validators.email(v) : null,
                     ),
                   ],
                 ),
@@ -238,10 +283,34 @@ class _RegistrationPageState extends State<RegistrationPage> {
                           Validators.required(v, 'License plate'),
                     ),
                     const SizedBox(height: 16),
+                    DropdownButtonFormField<VehicleType>(
+                      value: _selectedVehicleType,
+                      decoration: InputDecoration(
+                        labelText: 'Vehicle Type',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: VehicleType.values
+                          .map((type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(
+                                  type.name[0].toUpperCase() +
+                                      type.name.substring(1),
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedVehicleType = value),
+                      validator: (v) => v == null
+                          ? 'Please select a vehicle type'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
                     ZeniButton(
                       label: 'Upload Vehicle Photo',
                       onPressed: () {
-                        // TODO: Implement vehicle photo upload
+                        // TODO: Implement vehicle photo upload to vehicle_photos bucket
                       },
                       isOutlined: true,
                       icon: Icons.camera_alt,

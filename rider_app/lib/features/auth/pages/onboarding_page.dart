@@ -47,9 +47,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
         }).eq('id', userId);
 
         // Also ensure passenger record exists
+        // Ensure passenger record exists
         await Supabase.instance.client.from('passengers').upsert({
           'id': userId,
-        });
+        }, onConflict: 'id');
 
         if (mounted) context.go('/home');
       } catch (e) {
