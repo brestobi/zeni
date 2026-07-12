@@ -387,28 +387,36 @@ class _BookingPageContentState extends State<_BookingPageContent> {
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: _PaymentSelector(
-                                        label: 'Card',
-                                        icon: Icons.credit_card,
-                                        isSelected: state.paymentMethod == PaymentMethod.yocoCard,
-                                        onTap: () {
-                                          context.read<BookingBloc>().add(
-                                                PaymentMethodSelected(PaymentMethod.yocoCard),
-                                              );
-                                        },
+                                      child: Tooltip(
+                                        message: 'Card payment coming soon',
+                                        child: Opacity(
+                                          opacity: 0.5,
+                                          child: _PaymentSelector(
+                                            label: 'Card',
+                                            icon: Icons.credit_card,
+                                            isSelected: state.paymentMethod == PaymentMethod.yocoCard,
+                                            onTap: () {
+                                              // Disabled for now - Card payment not yet implemented
+                                            },
+                                          ),
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: _PaymentSelector(
-                                        label: 'MoMo',
-                                        icon: Icons.phone_android,
-                                        isSelected: state.paymentMethod == PaymentMethod.mtnMomo,
-                                        onTap: () {
-                                          context.read<BookingBloc>().add(
-                                                PaymentMethodSelected(PaymentMethod.mtnMomo),
-                                              );
-                                        },
+                                      child: Tooltip(
+                                        message: 'Mobile money coming soon',
+                                        child: Opacity(
+                                          opacity: 0.5,
+                                          child: _PaymentSelector(
+                                            label: 'MoMo',
+                                            icon: Icons.phone_android,
+                                            isSelected: state.paymentMethod == PaymentMethod.mtnMomo,
+                                            onTap: () {
+                                              // Disabled for now - Mobile money not yet implemented
+                                            },
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],

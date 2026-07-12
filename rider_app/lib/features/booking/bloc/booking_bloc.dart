@@ -226,17 +226,27 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     ));
 
     try {
-      // Basic mock route estimation based on latitude/longitude distance
-      // In a real-world scenario, this calls Google Distance Matrix API
-      final double lat1 = state.pickupLatitude;
-      final double lon1 = state.pickupLongitude;
-      final double lat2 = state.dropoffLatitude;
-      final double lon2 = state.dropoffLongitude;
+      // Call server-side fare calculation function
+      // This ensures the fare cannot be manipulated by a modified client
+      final fare = await _supabase.rpc(
+        'calculate_fare',
+        params: {
+          'pickup_lat': state.pickupLatitude,
+          'pickup_lng': state.pickupLongitude,
+          'dropoff_lat': state.dropoffLatitude,
+          'dropoff_lng': state.dropoffLongitude,
+          'vehicle_type_param': 'standard', // TODO: make this dynamic based on vehicle selection
+        },
+      );
 
-      // Simple Euclidean distance multiplier for estimation (approximate kilometers)
-      final distance = _calculateDistance(lat1, lon1, lat2, lon2);
+      // Calculate distance client-side for display only (not used for billing)
+      final distance = _calculateDistance(
+        state.pickupLatitude,
+        state.pickupLongitude,
+        state.dropoffLatitude,
+        state.dropoffLongitude,
+      );
       final duration = (distance * 2.5).round(); // ~2.5 minutes per km
-      final fare = 15.0 + (distance * 9.5); // base fare R15 + R9.5 per km
 
       emit(BookingEstimated(
         pickupAddress: state.pickupAddress,
@@ -246,7 +256,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         dropoffLatitude: state.dropoffLatitude,
         dropoffLongitude: state.dropoffLongitude,
         paymentMethod: state.paymentMethod,
-        estimatedFare: double.parse(fare.toStringAsFixed(2)),
+        estimatedFare: (fare as num).toDouble(),
         estimatedDistance: double.parse(distance.toStringAsFixed(2)),
         estimatedDuration: duration > 1 ? duration : 2,
       ));

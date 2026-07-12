@@ -145,40 +145,32 @@ class DriverHomeBloc extends Bloc<DriverHomeEvent, DriverHomeState> {
         return;
       }
 
-      // Fetch the original ride_request to get the passenger_id.
-      // This is required because the rides table has a NOT NULL constraint
-      // on passenger_id, and Ride.fromJson() expects it as a required field.
-      final requestData = await _supabase
-          .from('ride_requests')
+      // Call the atomic RPC function that handles the race condition
+      // This function:
+      // 1. Locks the ride_request row
+      // 2. Checks if it's still pending
+      // 3. Creates the ride record (unique constraint on ride_request_id)
+      // 4. Updates both ride_request and driver status in one transaction
+      // If another driver wins the race, the function returns success:false
+      final result = await _supabase.rpc(
+        'accept_ride_request_atomic',
+        params: {
+          'p_request_id': event.requestId,
+          'p_driver_id': driverId,
+        },
+      );
+
+      if (result['success'] == false) {
+        emit(DriverHomeError(result['error'] ?? 'Failed to accept ride'));
+        return;
+      }
+
+      // Fetch the complete ride data to populate the state
+      final rideData = await _supabase
+          .from('rides')
           .select()
-          .eq('id', event.requestId)
+          .eq('id', result['ride_id'])
           .single();
-
-      final passengerId = requestData['passenger_id'] as String;
-      final now = DateTime.now().toIso8601String();
-
-      // 1. Create a ride record with all required fields.
-      final rideData = await _supabase.from('rides').insert({
-        'ride_request_id': event.requestId,
-        'driver_id': driverId,
-        'passenger_id': passengerId,
-        'status': RideStatus.accepted.name,
-        'driver_accepted_at': now,
-        // Copy location fields from the request so Ride.fromJson can parse them.
-        'pickup_latitude': requestData['pickup_latitude'],
-        'pickup_longitude': requestData['pickup_longitude'],
-        'pickup_address': requestData['pickup_address'],
-        'dropoff_latitude': requestData['dropoff_latitude'],
-        'dropoff_longitude': requestData['dropoff_longitude'],
-        'dropoff_address': requestData['dropoff_address'],
-        'payment_method': requestData['payment_method'],
-      }).select().single();
-
-      // 2. Update ride request status to prevent other drivers from seeing it.
-      await _supabase
-          .from('ride_requests')
-          .update({'status': 'accepted'})
-          .eq('id', event.requestId);
 
       final ride = Ride.fromJson(rideData);
       emit(DriverOnRide(ride));
