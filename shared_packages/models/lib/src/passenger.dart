@@ -1,7 +1,6 @@
 /// Passenger-specific metadata.
 class Passenger {
   final String id;
-  final String profileId;
   final double? averageRating;
   final int? totalRides;
   final String? emergencyContactName;
@@ -12,7 +11,6 @@ class Passenger {
 
   const Passenger({
     required this.id,
-    required this.profileId,
     this.averageRating,
     this.totalRides,
     this.emergencyContactName,
@@ -24,7 +22,6 @@ class Passenger {
 
   factory Passenger.fromJson(Map<String, dynamic> json) => Passenger(
         id: json['id'] as String,
-        profileId: json['profile_id'] as String,
         averageRating: (json['average_rating'] as num?)?.toDouble(),
         totalRides: json['total_rides'] as int?,
         emergencyContactName: json['emergency_contact_name'] as String?,
@@ -38,7 +35,6 @@ class Passenger {
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'profile_id': profileId,
         'average_rating': averageRating,
         'total_rides': totalRides,
         'emergency_contact_name': emergencyContactName,
