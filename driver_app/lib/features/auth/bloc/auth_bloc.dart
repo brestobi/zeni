@@ -161,17 +161,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthBlocState> {
     emit(AuthLoading());
     try {
       // Use native Google Sign-In (no browser)
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        scopes: ['email', 'profile'],
-      );
-
-      final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) {
-        emit(AuthError('Google sign-in cancelled'));
-        return;
-      }
-
-      final googleAuth = await googleUser.authentication;
+      final googleUser = await GoogleSignIn.instance.authenticate();
+      final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
       final accessToken = googleAuth.accessToken;
 

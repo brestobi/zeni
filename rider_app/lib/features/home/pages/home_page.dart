@@ -136,7 +136,7 @@ class _HomeTabState extends State<_HomeTab> {
                       if (state is HomeLoaded) {
                         markers = state.nearbyDrivers.map((driver) {
                           return Marker(
-                            markerId: MarkerId(driver.id),
+                            markerId: MarkerId(driver.driverId),
                             position: LatLng(driver.latitude, driver.longitude),
                             icon: BitmapDescriptor.defaultMarkerWithHue(
                               BitmapDescriptor.hueOrange,

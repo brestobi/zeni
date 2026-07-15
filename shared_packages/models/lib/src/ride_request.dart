@@ -23,7 +23,6 @@ class RideRequest with _$RideRequest {
     String? status,
     @JsonKey(name: 'expires_at') DateTime? expiresAt,
     @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
   }) = _RideRequest;
 
   factory RideRequest.fromJson(Map<String, dynamic> json) =>

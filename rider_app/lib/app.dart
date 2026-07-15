@@ -11,6 +11,8 @@ class ZeniRiderApp extends StatelessWidget {
       title: 'Zeni Rider',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routerConfig: appRouter,
     );
   }

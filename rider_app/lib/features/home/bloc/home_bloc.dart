@@ -59,14 +59,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           .gt('updated_at', fifteenMinutesAgo);
 
       final List<RideLocation> drivers = (data as List).map((json) {
-        return RideLocation(
-          id: json['driver_id'] as String,
-          rideId: '', // rideId is not applicable here
-          latitude: (json['latitude'] as num).toDouble(),
-          longitude: (json['longitude'] as num).toDouble(),
-          heading: (json['heading'] as num?)?.toDouble(),
-          recordedAt: DateTime.parse(json['updated_at'] as String),
-        );
+        return RideLocation.fromJson(json);
       }).toList();
 
       emit(HomeLoaded(drivers));
@@ -93,17 +86,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     try {
       final fifteenMinutesAgo = DateTime.now().subtract(const Duration(minutes: 15));
       final List<RideLocation> drivers = event.locations
-          .map((json) {
-            return RideLocation(
-              id: json['driver_id'] as String,
-              rideId: '',
-              latitude: (json['latitude'] as num).toDouble(),
-              longitude: (json['longitude'] as num).toDouble(),
-              heading: (json['heading'] as num?)?.toDouble(),
-              recordedAt: DateTime.parse(json['updated_at'] as String),
-            );
-          })
-          .where((driver) => driver.recordedAt.isAfter(fifteenMinutesAgo))
+          .map((json) => RideLocation.fromJson(json))
+          .where((driver) => driver.updatedAt.isAfter(fifteenMinutesAgo))
           .toList();
 
       emit(HomeLoaded(drivers));

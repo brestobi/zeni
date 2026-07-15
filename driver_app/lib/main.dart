@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'app.dart';
 import 'core/notifications/notification_service.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/repository/auth_repository.dart';
 import 'features/home/bloc/driver_home_bloc.dart';
 
-// Supabase credentials should be provided via --dart-define at build time:
+// Supabase and Google Sign-In credentials should be provided via --dart-define at build time:
 //   flutter run --dart-define=SUPABASE_URL=https://xyz.supabase.co \
-//               --dart-define=SUPABASE_ANON_KEY=your-anon-key
+//               --dart-define=SUPABASE_ANON_KEY=your-anon-key \
+//               --dart-define=GOOGLE_SERVER_CLIENT_ID=your-google-server-client-id
 const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+const _googleServerClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +28,13 @@ void main() async {
     url: _supabaseUrl,
     anonKey: _supabaseAnonKey,
   );
+
+  // Initialize Google Sign-In (mandatory exactly once in v7.0.0+ before calling authenticate).
+  if (_googleServerClientId.isNotEmpty) {
+    await GoogleSignIn.instance.initialize(
+      serverClientId: _googleServerClientId,
+    );
+  }
 
   // Initialize FCM token registration. This is a best-effort call:
   // if the user is not yet signed in, currentUser will be null and

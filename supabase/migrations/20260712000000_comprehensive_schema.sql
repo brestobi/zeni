@@ -76,7 +76,7 @@ create index idx_drivers_status_verified on public.drivers(status, is_verified);
 -- Vehicles
 -- =============================================================================
 create table public.vehicles (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   driver_id uuid references public.drivers on delete cascade not null,
   type vehicle_type not null default 'standard',
   make text not null,
@@ -99,7 +99,7 @@ create index idx_vehicles_is_active on public.vehicles(is_active);
 -- Vehicle Documents
 -- =============================================================================
 create table public.vehicle_documents (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   vehicle_id uuid references public.vehicles on delete cascade not null,
   document_type text not null,
   document_url text not null,
@@ -113,7 +113,7 @@ create index idx_vehicle_documents_status on public.vehicle_documents(status);
 -- Ride Requests
 -- =============================================================================
 create table public.ride_requests (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   passenger_id uuid references public.passengers on delete cascade not null,
   pickup_latitude double precision not null,
   pickup_longitude double precision not null,
@@ -144,7 +144,7 @@ create index idx_ride_requests_pickup_location on public.ride_requests using GIS
 -- Rides
 -- =============================================================================
 create table public.rides (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   ride_request_id uuid references public.ride_requests on delete restrict not null unique,
   driver_id uuid references public.drivers on delete restrict not null,
   passenger_id uuid references public.passengers on delete restrict not null,
@@ -194,7 +194,7 @@ create index idx_ride_locations_location on public.ride_locations using GIST (lo
 -- Ratings
 -- =============================================================================
 create table public.ratings (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   ride_id uuid references public.rides on delete cascade not null,
   reviewer_id uuid references public.profiles on delete cascade not null,
   reviewed_id uuid references public.profiles on delete cascade not null,
@@ -211,7 +211,7 @@ create index idx_ratings_reviewer_id on public.ratings(reviewer_id);
 -- Notifications
 -- =============================================================================
 create table public.notifications (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles on delete cascade not null,
   title text not null,
   body text not null,
@@ -228,7 +228,7 @@ create index idx_notifications_is_read on public.notifications(is_read);
 -- Device Tokens (for FCM push notifications)
 -- =============================================================================
 create table public.device_tokens (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles on delete cascade not null,
   token text not null,
   platform text check (platform in ('android', 'ios', 'web')),
@@ -242,7 +242,7 @@ create index idx_device_tokens_user_id on public.device_tokens(user_id);
 -- Payments
 -- =============================================================================
 create table public.payments (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   ride_id uuid references public.rides on delete cascade not null,
   amount decimal(10, 2) not null,
   currency text default 'ZAR',
@@ -262,7 +262,7 @@ create index idx_payments_status on public.payments(status);
 -- Support Tickets
 -- =============================================================================
 create table public.support_tickets (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles on delete cascade not null,
   ride_id uuid references public.rides on delete set null,
   subject text not null,
@@ -280,7 +280,7 @@ create index idx_support_tickets_status on public.support_tickets(status);
 -- Saved Places
 -- =============================================================================
 create table public.saved_places (
-  id uuid default uuid_generate_v4() primary key,
+  id uuid default gen_random_uuid() primary key,
   user_id uuid references public.profiles on delete cascade not null,
   label text not null,
   address text not null,
