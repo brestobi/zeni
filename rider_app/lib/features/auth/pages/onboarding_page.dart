@@ -41,10 +41,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
           }
           return;
         }
-        await Supabase.instance.client.from('profiles').update({
+        await Supabase.instance.client.from('profiles').upsert({
+          'id': userId,
           'full_name': _nameController.text.trim(),
           'email': _emailController.text.trim(),
-        }).eq('id', userId);
+        });
 
         // Also ensure passenger record exists
         // Ensure passenger record exists
